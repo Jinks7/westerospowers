@@ -8,7 +8,7 @@ class  WPBattle(object):
 		self.attackers = attackers
 		self.defenders = defenders
 		self.total = attackers + defenders
-		self.def_bonus = def_bonus/2
+		self.def_bonus = def_bonus
 
 		self.atk_per = self.round_to(attackers / float(self.total) * 100)
 		self.def_per = self.round_to(defenders / float(self.total) * 100)
@@ -16,27 +16,50 @@ class  WPBattle(object):
 	def score_combat(self):
 		scores = {}
 		loss_dbonus_rolls = 2
+		def_roll_bonus = float(self.def_bonus)/2
 		atk_rtypes = self.num_rolls(self.atk_per)
-		def_rtypes = [droll+self.def_bonus for droll in self.num_rolls(self.def_per)]
+		def_rtypes = [round(droll+def_roll_bonus) for droll in self.num_rolls(self.def_per)]
 
 		atk_rolls = [self.roll(roll) for roll in atk_rtypes]
 		def_rolls = [self.roll(roll) for roll in def_rtypes]
 
 		atk_score = sum(atk_rolls) 
-		def_score = sum(def_rolls)
+		def_score = sum(def_rolls) + self.def_bonus
 
 		if def_score >= atk_score:
-			def_dead_rolls = (atk_score / len(atk_rolls)) 
-			atk_dead_rolls = def_score / len(def_rolls) + loss_dbonus_rolls
+			def_dead_ramount = (float(atk_score) / len(atk_rolls)) 
+			atk_dead_ramount = (float(def_score) / len(def_rolls)) + loss_dbonus_rolls
 		else:
-			def_dead_rolls = atk_score / len(atk_rolls) + loss_dbonus_rolls
-			atk_dead_rolls = (def_score / len(def_rolls)) 
+			def_dead_ramount = (atk_score / len(atk_rolls)) + loss_dbonus_rolls
+			atk_dead_ramount = (def_score / len(def_rolls)) 
 
-		atk_dpercent = self.dead_percent(atk_dead_rolls)
-		def_dpercent = self.dead_percent(def_dead_rolls)
+		atk_dead_rolls = self.dead_percent(atk_dead_ramount)
+		def_dead_rolls = self.dead_percent(def_dead_ramount)
+		atk_dpercent = sum(atk_dead_rolls)
+		def_dpercent = sum(def_dead_rolls)
 	
-		atk_dead = int(self.attackers * (atk_dpercent/100.0))
-		def_dead = int(self.defenders * (def_dpercent/100.0))
+		if self.defenders >= self.attackers:
+			atk_dead = int(self.attackers * (atk_dpercent/100.0))
+			def_dead = int(self.attackers * (def_dpercent/100.0))
+		else:
+			atk_dead = int(self.defenders * (atk_dpercent/100.0))
+			def_dead = int(self.defenders * (def_dpercent/100.0))
+
+		scores['def_dead_ramount'] = def_dead_ramount
+		scores['atk_dead_ramount'] = atk_dead_ramount
+		scores['loss_dbonus_rolls'] = loss_dbonus_rolls 
+
+		scores['atk_rtype'] = atk_rtypes
+		scores['def_rtype'] = def_rtypes
+
+		scores['def_dead_rolls'] = def_dead_rolls
+		scores['atk_dead_rolls'] = atk_dead_rolls
+
+		scores['atk_percent'] = self.atk_per
+		scores['def_percent'] = self.def_per
+
+		scores['atk_rolls'] = atk_rolls
+		scores['def_rolls'] = def_rolls
 
 		scores['atk_score'] = atk_score
 		scores['def_score'] = def_score
@@ -46,16 +69,13 @@ class  WPBattle(object):
 
 		scores['atk_dpercent'] = atk_dpercent
 		scores['def_dpercent'] = def_dpercent
-
-		scores['atk_dead'] = atk_dead
-		scores['def_dead'] = def_dead
 		return scores
 
 
 	def dead_percent(self, rolls):
 		fiveD = 5
-		dead_percent = [self.roll(fiveD) for r in xrange(0,rolls)]
-		return sum(dead_percent)
+		dead_percent = [self.roll(fiveD) for r in xrange(0,int(rolls))]
+		return dead_percent
 
 	def num_rolls(self, tpercent):
 		type_rolls = []
@@ -79,10 +99,27 @@ class  WPBattle(object):
 
 	def output_battle(self):
 		scores = self.score_combat()
-		print scores
-		print "Attackers: %s Defenders: %s Defense Bonus: %s" % (self.attackers, self.defenders, self.def_bonus)
-		print "Atk Score: %s Def Score: %s" % (scores['atk_score'], scores['def_score'])
-		print "Atk Casualties: %s Def Casualties: %s" % (scores['atk_dead'], scores['def_dead'])
 
-WPB = WPBattle(100000, 50000, 3)
+		print "Attackers: %s | %s%%" % (self.attackers, scores['atk_percent'])
+		print "DRolls: %s of %s" % (len(scores['atk_rtype']), scores['atk_rtype'])
+		print "Rolls: %s = %s" % (str(scores['atk_rolls']), scores['atk_score'])
+		print ""
+		print "Defenders: %s | Defense Bonus: %s | %s%%" % (self.defenders, self.def_bonus, scores['def_percent'])
+		print "DRolls: %s of %s" % (len(scores['def_rtype']),scores['def_rtype'])
+		print "Rolls: %s + %s = %s" % (str(scores['def_rolls']), self.def_bonus , scores['def_score'])
+		print ""
+		print "Casualties: Loser get %s extra rolls, Lower Army count used. Rolls = (score / rolls). Loser uses higher score to determine dead " % scores['loss_dbonus_rolls']
+		print "Atk %s D5 rolls: %s = %s" % (int(scores['atk_dead_ramount']), scores['atk_dead_rolls'], scores['atk_dpercent'])
+		print "Def %s D5 rolls: %s = %s" % (int(scores['def_dead_ramount']), scores['def_dead_rolls'], scores['def_dpercent'])
+
+		if self.defenders >= self.attackers:
+			print "Atk Casualties: %s * %s = %s " % (self.attackers, scores['atk_dpercent'], scores['atk_dead'])
+			print "Def Casualties: %s * %s = %s " % (self.attackers, scores['def_dpercent'], scores['def_dead'])
+		else:
+			print "Atk Casualties: %s * %s = %s " % (self.defenders, scores['atk_dpercent'], scores['atk_dead'])
+			print "Def Casualties: %s * %s = %s " % (self.defenders, scores['def_dpercent'], scores['def_dead'])
+
+		print "Atk Remain: %s Def Remain: %s" % (self.attackers - scores['atk_dead'], self.defenders - scores['def_dead'])
+
+WPB = WPBattle(13387, 28782, 3)
 WPB.output_battle()
