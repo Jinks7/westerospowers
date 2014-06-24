@@ -134,5 +134,12 @@ class  WPBattle(object):
 
 		print "Atk Remain: %s Def Remain: %s" % (self.attackers - scores['atk_dead'], self.defenders - scores['def_dead'])
 
-WPB = WPBattle(20032, 11047, 7)
-WPB.output_battle()
+try:
+	attackers = int(input("Attackers: "))
+	defenders = int(input("Defenders: "))
+	bonus = int(input("Bonus: "))
+	
+	WPB = WPBattle(attackers, defenders, bonus)
+	WPB.output_battle()
+except:
+	print "Are you sure you entered numbers?"
